@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buy or Wait Agent — Financial Planning Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .badge-affordablenow, .badge-affordable_now { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-affordablewithplan, .badge-affordable_with_plan { background-color: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-affordablelater, .badge-affordable_later { background-color: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
+    .badge-notaffordable, .badge-not_affordable { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .kpi-card { cursor: pointer; transition: all 0.15s ease-in-out; }
+    .kpi-card:hover { transform: translateY(-2px); }
+    .kpi-card.active-kpi { ring: 2px; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .req-item.active { background-color: #eef2ff; border-left: 4px solid #4f46e5; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+
+  <!-- Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-100">
+          BW
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">Buy or Wait Agent</h1>
+          <p class="text-xs text-slate-500 font-medium">Deterministic Financial Planning & 90-Day Cashflow Engine</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <nav class="flex bg-slate-100 p-1 rounded-lg text-xs font-semibold">
+          <button id="nav-explorer" onclick="switchTab('explorer')" class="px-3.5 py-1.5 rounded-md bg-white text-slate-900 shadow-sm transition">Dataset Explorer</button>
+          <button id="nav-playground" onclick="switchTab('playground')" class="px-3.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition">What-If Playground</button>
+          <button id="nav-chat" onclick="switchTab('chat')" class="px-3.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition flex items-center space-x-1.5">
+            <span>💬</span><span>AI Chatbot</span>
+          </button>
+          <button id="nav-report" onclick="switchTab('report')" class="px-3.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition">Usage Report</button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive KPI Filter Bar -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+      <span>Filter Cases By Status</span>
+      <span class="text-[11px] text-slate-500 font-normal">Click any card below to filter the dataset</span>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+      <!-- Total 250 Cases -->
+      <div id="card-all" onclick="setFilter('all')" class="kpi-card bg-white p-4 rounded-xl border border-slate-200 shadow-sm ring-indigo-500 active-kpi">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">All Requests</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">100%</span>
+        </div>
+        <div class="text-2xl font-bold text-slate-900 mt-1" id="stat-total">250</div>
+      </div>
+
+      <!-- Affordable Now -->
+      <div id="card-affordablenow" onclick="setFilter('affordablenow')" class="kpi-card bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 shadow-sm ring-emerald-500 hover:bg-emerald-50">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Affordable Now</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">38.8%</span>
+        </div>
+        <div class="text-2xl font-bold text-emerald-700 mt-1" id="stat-now">97</div>
+      </div>
+
+      <!-- Affordable With Plan -->
+      <div id="card-affordablewithplan" onclick="setFilter('affordablewithplan')" class="kpi-card bg-blue-50/60 p-4 rounded-xl border border-blue-200 shadow-sm ring-blue-500 hover:bg-blue-50">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-blue-700 uppercase tracking-wider">With Plan</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">21.2%</span>
+        </div>
+        <div class="text-2xl font-bold text-blue-700 mt-1" id="stat-plan">53</div>
+      </div>
+
+      <!-- Affordable Later -->
+      <div id="card-affordablelater" onclick="setFilter('affordablelater')" class="kpi-card bg-amber-50/60 p-4 rounded-xl border border-amber-200 shadow-sm ring-amber-500 hover:bg-amber-50">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-amber-700 uppercase tracking-wider">Affordable Later</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">23.2%</span>
+        </div>
+        <div class="text-2xl font-bold text-amber-700 mt-1" id="stat-later">58</div>
+      </div>
+
+      <!-- Not Affordable -->
+      <div id="card-notaffordable" onclick="setFilter('notaffordable')" class="kpi-card bg-rose-50/60 p-4 rounded-xl border border-rose-200 shadow-sm ring-rose-500 hover:bg-rose-50">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-rose-700 uppercase tracking-wider">Not Affordable</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">16.8%</span>
+        </div>
+        <div class="text-2xl font-bold text-rose-700 mt-1" id="stat-not">42</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main View Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- TAB 1: DATASET EXPLORER -->
+    <div id="tab-explorer" class="space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Column: Request List -->
+        <div class="lg:col-span-5 bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col h-[780px]">
+          <!-- Filter & Search Controls -->
+          <div class="space-y-3 pb-3 border-b border-slate-100">
+            <input type="text" id="searchInput" oninput="debounceSearch()" placeholder="Search request ID, user ID, category, keyword..."
+              class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex items-center justify-between">
+              <div class="flex flex-wrap gap-1.5 text-[11px] font-medium">
+                <button onclick="setFilter('all')" class="filter-btn px-2.5 py-1 rounded-full bg-slate-900 text-white" data-status="all">All (250)</button>
+                <button onclick="setFilter('affordablenow')" class="filter-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="affordablenow">Now (97)</button>
+                <button onclick="setFilter('affordablewithplan')" class="filter-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="affordablewithplan">Plan (53)</button>
+                <button onclick="setFilter('affordablelater')" class="filter-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="affordablelater">Later (58)</button>
+                <button onclick="setFilter('notaffordable')" class="filter-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="notaffordable">Not Affordable (42)</button>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-400 font-medium pt-1" id="listCounter">
+              Showing 250 requests
+            </div>
+          </div>
+
+          <!-- List Items -->
+          <div id="requestsList" class="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scroll pt-1">
+            <div class="p-6 text-center text-xs text-slate-400">Loading requests...</div>
+          </div>
+        </div>
+
+        <!-- Right Column: Request Detail & 90-Day Chart -->
+        <div class="lg:col-span-7 space-y-6">
+          <div id="detailContainer" class="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6 min-h-[780px]">
+            <div class="p-12 text-center text-slate-400 text-sm">Select a request from the list to view its financial profile, 90-day forecast, and recommendation.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 2: WHAT-IF PLAYGROUND -->
+    <div id="tab-playground" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Form Card -->
+        <div class="lg:col-span-5 bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">What-If Scenario Playground</h2>
+              <p class="text-xs text-slate-500">Test how requested expenses change affordability based on user financial capacity</p>
+            </div>
+          </div>
+
+          <!-- Quick Test Presets -->
+          <div class="space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Quick Presets (Test Affordability Transitions)</span>
+            <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+              <button type="button" onclick="applyPreset('small')" class="p-1.5 bg-emerald-100/80 hover:bg-emerald-200 text-emerald-800 rounded font-semibold text-left">
+                🟢 Small ($150) &rarr; Now
+              </button>
+              <button type="button" onclick="applyPreset('moderate')" class="p-1.5 bg-blue-100/80 hover:bg-blue-200 text-blue-800 rounded font-semibold text-left">
+                🔵 Installments ($800) &rarr; Plan
+              </button>
+              <button type="button" onclick="applyPreset('wait')" class="p-1.5 bg-amber-100/80 hover:bg-amber-200 text-amber-800 rounded font-semibold text-left">
+                🟡 Large ($2,400) &rarr; Later
+              </button>
+              <button type="button" onclick="applyPreset('huge')" class="p-1.5 bg-rose-100/80 hover:bg-rose-200 text-rose-800 rounded font-semibold text-left">
+                🔴 Huge ($15,000) &rarr; Not Affordable
+              </button>
+            </div>
+          </div>
+
+          <form id="playgroundForm" onsubmit="evaluateCustomRequest(event)" class="space-y-3.5 text-xs">
+            <!-- User Profile Selection -->
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">User Financial Persona / ID</label>
+              <select id="cust_user_select" onchange="onUserPresetChange()" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 font-medium">
+                <option value="custom_user">Custom User Profile (Specify balance below)</option>
+                <option value="user_27">user_27 (ZAR - R3,576 balance &bull; Strict Budget)</option>
+                <option value="user_28">user_28 (EUR - €703 balance &bull; Modest Income)</option>
+                <option value="user_30">user_30 (USD - $1,192 balance &bull; Average Income)</option>
+                <option value="user_26">user_26 (IDR - Rp 18.7M balance &bull; Payday Dependent)</option>
+                <option value="user_33">user_33 (INR - ₹280,200 balance &bull; High Reserve)</option>
+              </select>
+            </div>
+
+            <!-- Financial Context (Balance & Salary) -->
+            <div id="customFinancialInputs" class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2.5">
+              <span class="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">User Financial Statistics</span>
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block font-medium text-slate-600 mb-0.5">Available Balance</label>
+                  <input type="number" step="any" id="cust_balance" value="2500" required
+                    class="w-full px-2.5 py-1.5 border border-slate-200 rounded bg-white font-medium focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                  <label class="block font-medium text-slate-600 mb-0.5">Monthly Salary</label>
+                  <input type="number" step="any" id="cust_salary" value="1800" required
+                    class="w-full px-2.5 py-1.5 border border-slate-200 rounded bg-white font-medium focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block font-medium text-slate-600 mb-0.5">Currency</label>
+                  <select id="cust_currency" class="w-full px-2.5 py-1.5 border border-slate-200 rounded bg-white font-medium focus:ring-2 focus:ring-indigo-500">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="ZAR">ZAR (R)</option>
+                    <option value="IDR">IDR (Rp)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-medium text-slate-600 mb-0.5">Min Reserve to Keep</label>
+                  <input type="number" step="any" id="cust_min_keep" value="375" required
+                    class="w-full px-2.5 py-1.5 border border-slate-200 rounded bg-white font-medium focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
+            </div>
+
+            <!-- Request Parameters -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Request Date</label>
+                <input type="date" id="cust_request_date" value="2026-09-15" required
+                  class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Completion Deadline</label>
+                <input type="date" id="cust_completion_date" value="2026-10-31" required
+                  class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Request Type</label>
+                <select id="cust_type" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 font-medium">
+                  <option value="purchase">purchase</option>
+                  <option value="travel">travel</option>
+                  <option value="investment">investment</option>
+                  <option value="education">education</option>
+                  <option value="debt_repayment">debt_repayment</option>
+                  <option value="housing">housing</option>
+                  <option value="emergency_expense">emergency_expense</option>
+                  <option value="family_transfer">family_transfer</option>
+                  <option value="other">other</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Requested Amount</label>
+                <input type="number" step="any" id="cust_amount" value="800" required
+                  class="w-full px-3 py-2 border border-slate-200 rounded-lg font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500">
+              </div>
+            </div>
+            <div>
+              <label class="flex items-center space-x-2 font-semibold text-slate-700">
+                <input type="checkbox" id="cust_partial" checked class="rounded text-indigo-600 focus:ring-indigo-500">
+                <span>Allows Partial Payment Schedule</span>
+              </label>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Request Text</label>
+              <textarea id="cust_text" rows="2" required
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500">Can I make this purchase without putting upcoming bills at risk?</textarea>
+            </div>
+            <button type="submit"
+              class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition">
+              Evaluate Safest Decision
+            </button>
+          </form>
+        </div>
+
+        <!-- Result Card -->
+        <div class="lg:col-span-7 bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+          <div id="playgroundResult" class="space-y-6">
+            <div class="p-12 text-center text-slate-400 text-sm">Select a scenario preset above or enter custom numbers and click "Evaluate Safest Decision".</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 3: AI CHAT ASSISTANT -->
+    <div id="tab-chat" class="hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[780px]">
+        <!-- Chat Header -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-blue-400 flex items-center justify-center text-lg shadow-md">
+              🤖
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <h2 class="text-sm font-bold tracking-tight">Buy or Wait AI Financial Assistant</h2>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online • Deterministic Engine
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-300 mt-0.5">Ask questions about any request, explore affordability status, test what-ifs, or learn cashflow rules.</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="clearChat()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700 flex items-center gap-1.5">
+              <span>🗑️</span><span>Clear Chat</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 custom-scroll">
+          <!-- Initial Welcome Message from Assistant -->
+          <div class="flex items-start space-x-3 max-w-3xl">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm">
+              AI
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-xs leading-relaxed space-y-3">
+              <p class="font-semibold text-slate-800 text-sm">👋 Welcome! I am your Buy or Wait AI Financial Advisory Assistant.</p>
+              <p class="text-slate-600">I am connected directly to the deterministic 90-day cashflow simulation engine with all 250 requests indexed. Here are some things you can ask me:</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button onclick="sendQuickChat('Tell me about request_26')" class="text-left p-2.5 rounded-xl border border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/50 transition text-[11px] text-slate-700">
+                  <span class="font-semibold text-indigo-600 block">💬 Inspect Request 26</span>
+                  <span>Analyze user_26's IDR 15.6M family transfer</span>
+                </button>
+                <button onclick="sendQuickChat('What if request 26 was 5,000,000 IDR?')" class="text-left p-2.5 rounded-xl border border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/50 transition text-[11px] text-slate-700">
+                  <span class="font-semibold text-indigo-600 block">🔮 What-If Scenario</span>
+                  <span>Test reduced amount on Request 26</span>
+                </button>
+                <button onclick="sendQuickChat('Why are some cases Not Affordable?')" class="text-left p-2.5 rounded-xl border border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/50 transition text-[11px] text-slate-700">
+                  <span class="font-semibold text-rose-600 block">🚫 Not Affordable Cases</span>
+                  <span>Breakdown of 42 high-deficit cases</span>
+                </button>
+                <button onclick="sendQuickChat('How is Amount Safe to Pay calculated?')" class="text-left p-2.5 rounded-xl border border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/50 transition text-[11px] text-slate-700">
+                  <span class="font-semibold text-emerald-600 block">📐 Calculation Rules</span>
+                  <span>Learn how 90-day reserve formulas work</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Quick Action Chips -->
+        <div id="quickChipsBar" class="px-6 py-2.5 bg-white border-t border-slate-100 flex items-center space-x-2 overflow-x-auto text-[11px] text-slate-600">
+          <span class="font-semibold text-slate-400 uppercase text-[10px] whitespace-nowrap">Suggested:</span>
+          <button onclick="sendQuickChat('Tell me about request_26')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 whitespace-nowrap transition">Request 26</button>
+          <button onclick="sendQuickChat('Show not affordable cases')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 whitespace-nowrap transition">Not Affordable (42)</button>
+          <button onclick="sendQuickChat('Show affordable later cases')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 whitespace-nowrap transition">Affordable Later (58)</button>
+          <button onclick="sendQuickChat('How is Amount Safe to Pay calculated?')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 whitespace-nowrap transition">Safe to Pay Formula</button>
+          <button onclick="sendQuickChat('What if request 26 was 5M IDR?')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 whitespace-nowrap transition">What-If 5M IDR</button>
+        </div>
+
+        <!-- Chat Input Form -->
+        <div class="p-4 bg-white border-t border-slate-200">
+          <form id="chatForm" onsubmit="handleChatSubmit(event)" class="flex items-center space-x-3">
+            <div class="relative flex-1">
+              <input type="text" id="chatInput" placeholder="Ask about any request, scenario, or financial rule (e.g. 'tell me about request 26')..."
+                class="w-full text-xs px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-10 shadow-sm" autocomplete="off" />
+            </div>
+            <button type="submit" id="chatSendBtn" class="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-indigo-100 transition flex items-center space-x-1.5 flex-shrink-0">
+              <span>Send</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: USAGE REPORT & EXPORT -->
+    <div id="tab-report" class="hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-8 space-y-6 max-w-4xl mx-auto">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Evaluation & Token Usage Summary</h2>
+            <p class="text-xs text-slate-500 mt-1">Generated from evaluation/usage_report.md and evaluation/output.csv</p>
+          </div>
+          <a href="/evaluation/output.csv" download class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+            Download output.csv
+          </a>
+        </div>
+        <div id="reportContent" class="prose prose-sm max-w-none text-slate-700 text-xs leading-relaxed">
+          Loading report...
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let activeFilter = 'all';
+    let currentChart = null;
+    let playgroundChart = null;
+    let searchTimeout = null;
+    window.selectedReq = null;
+
+    function switchTab(tabName) {
+      ['explorer', 'playground', 'chat', 'report'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.classList.toggle('hidden', t !== tabName);
+        const navBtn = document.getElementById(`nav-${t}`);
+        if (navBtn) {
+          if (t === tabName) {
+            navBtn.className = "px-3.5 py-1.5 rounded-md bg-white text-slate-900 shadow-sm transition";
+          } else {
+            navBtn.className = "px-3.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition";
+          }
+        }
+      });
+      if (tabName === 'report') {
+        loadUsageReport();
+      } else if (tabName === 'playground' && !document.getElementById('playgroundChartCanvas')) {
+        // Run initial evaluation in playground on first view
+        document.getElementById('playgroundForm').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      } else if (tabName === 'chat') {
+        setTimeout(() => {
+          const inp = document.getElementById('chatInput');
+          if (inp) inp.focus();
+          scrollChatToBottom();
+        }, 80);
+      }
+    }
+
+    async function loadSummary() {
+      try {
+        const res = await fetch('/api/summary');
+        const data = await res.json();
+        document.getElementById('stat-total').innerText = data.total_requests;
+        document.getElementById('stat-now').innerText = data.affordability_status_counts.affordablenow || 0;
+        document.getElementById('stat-plan').innerText = data.affordability_status_counts.affordablewithplan || 0;
+        document.getElementById('stat-later').innerText = data.affordability_status_counts.affordablelater || 0;
+        document.getElementById('stat-not').innerText = data.affordability_status_counts.notaffordable || 0;
+      } catch (err) {
+        console.error("Failed to load summary", err);
+      }
+    }
+
+    function debounceSearch() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(loadRequests, 250);
+    }
+
+    let listRequestSeq = 0;
+    let detailRequestSeq = 0;
+
+    function setFilter(status) {
+      activeFilter = status;
+      window.selectedReq = null;
+
+      // Update button styling
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        if (btn.getAttribute('data-status') === status) {
+          btn.className = "filter-btn px-2.5 py-1 rounded-full bg-slate-900 text-white";
+        } else {
+          btn.className = "filter-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200";
+        }
+      });
+
+      // Highlight active top KPI card
+      document.querySelectorAll('.kpi-card').forEach(card => card.classList.remove('active-kpi', 'ring-2'));
+      const activeCard = document.getElementById(`card-${status}`);
+      if (activeCard) {
+        activeCard.classList.add('active-kpi', 'ring-2');
+      }
+
+      loadRequests();
+    }
+
+    async function loadRequests() {
+      const seq = ++listRequestSeq;
+      const q = document.getElementById('searchInput').value;
+      const listEl = document.getElementById('requestsList');
+      const counterEl = document.getElementById('listCounter');
+
+      try {
+        const res = await fetch(`/api/requests?status=${activeFilter}&search=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (seq !== listRequestSeq) return;
+
+        const statusLabel = activeFilter === 'all' ? 'All' : activeFilter.replace('_', ' ');
+        counterEl.innerText = `Showing ${data.count} requests (${statusLabel})`;
+
+        if (!data.requests || data.requests.length === 0) {
+          listEl.innerHTML = `<div class="p-8 text-center text-xs text-slate-400">No requests found matching criteria.</div>`;
+          document.getElementById('detailContainer').innerHTML = `<div class="p-12 text-center text-slate-400 text-sm">No matching requests to display.</div>`;
+          return;
+        }
+
+        listEl.innerHTML = data.requests.map(r => `
+          <div id="req-item-${r.request_id}" onclick="loadDetail('${r.request_id}')" class="req-item p-3 hover:bg-slate-50 cursor-pointer rounded-lg transition ${window.selectedReq === r.request_id ? 'active' : ''}">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs text-slate-900">${r.request_id}</span>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full badge-${r.affordability_status}">${r.affordability_status}</span>
+            </div>
+            <div class="text-[11px] text-slate-600 mt-1 flex justify-between">
+              <span>${r.user_id} &bull; <span class="capitalize">${r.request_type.replace('_', ' ')}</span></span>
+              <span class="font-semibold text-slate-900">${r.requested_amount.toLocaleString()}</span>
+            </div>
+            <p class="text-[11px] text-slate-400 truncate mt-1">${r.request_text}</p>
+          </div>
+        `).join('');
+
+        // Automatically load detail for first item in filtered list
+        const targetId = window.selectedReq && data.requests.some(r => r.request_id === window.selectedReq)
+          ? window.selectedReq
+          : data.requests[0].request_id;
+        loadDetail(targetId);
+      } catch (err) {
+        if (seq === listRequestSeq) {
+          listEl.innerHTML = `<div class="p-6 text-center text-xs text-rose-500">Failed to load requests: ${err.message}</div>`;
+        }
+      }
+    }
+
+    async function loadDetail(reqId) {
+      window.selectedReq = reqId;
+      const seq = ++detailRequestSeq;
+
+      // Update active style in left list
+      document.querySelectorAll('.req-item').forEach(el => el.classList.remove('active'));
+      const activeEl = document.getElementById(`req-item-${reqId}`);
+      if (activeEl) {
+        activeEl.classList.add('active');
+      }
+
+      const detailEl = document.getElementById('detailContainer');
+      try {
+        const res = await fetch(`/api/request/${reqId}`);
+        const d = await res.json();
+        if (seq !== detailRequestSeq) return;
+
+        const curr = d.profile.home_currency;
+        const isNotAffordable = d.decision.affordability_status === 'notaffordable';
+
+        detailEl.innerHTML = `
+          <!-- Header Card -->
+          <div class="flex items-start justify-between border-b border-slate-100 pb-4">
+            <div>
+              <div class="flex items-center space-x-2.5">
+                <h2 class="text-lg font-bold text-slate-900">${d.request.request_id}</h2>
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full badge-${d.decision.affordability_status}">
+                  ${d.decision.affordability_status}
+                </span>
+              </div>
+              <p class="text-xs text-slate-500 mt-1">User: <span class="font-semibold text-slate-700">${d.request.user_id}</span> &bull; Request Date: <span class="font-semibold text-slate-700">${d.request.request_date}</span></p>
+            </div>
+            <div class="text-right space-y-1">
+              <span class="text-xs text-slate-400 block">Requested Amount</span>
+              <div class="text-xl font-bold ${isNotAffordable ? 'text-rose-600' : 'text-indigo-600'}">${curr} ${d.request.requested_amount.toLocaleString()}</div>
+              <button onclick="askChatbotAboutRequest('${d.request.request_id}')" class="inline-flex items-center space-x-1.5 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[11px] font-semibold transition">
+                <span>💬</span><span>Ask AI Chatbot</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Decision Summary Banner -->
+          <div class="p-4 rounded-xl ${isNotAffordable ? 'bg-rose-50/80 border border-rose-200' : 'bg-slate-50 border border-slate-200'} space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="text-xs">
+                <span class="font-bold text-slate-700">Recommended Method:</span>
+                <span class="font-semibold px-2 py-0.5 rounded-md ml-1 capitalize ${isNotAffordable ? 'bg-rose-200/70 text-rose-800' : 'bg-white border border-slate-200 text-slate-900'}">
+                  ${d.decision.recommended_payment_method}
+                </span>
+              </div>
+              <div class="text-xs">
+                <span class="font-bold text-slate-700">Safe to Pay Today:</span>
+                <span class="font-semibold ${isNotAffordable ? 'text-rose-700' : 'text-emerald-700'} ml-1">${curr} ${Number(d.decision.amount_safe_to_pay).toLocaleString()}</span>
+              </div>
+            </div>
+            <p class="text-xs ${isNotAffordable ? 'text-rose-800' : 'text-slate-600'} leading-relaxed pt-1 font-medium">
+              ${d.decision.decision_explanation}
+            </p>
+          </div>
+
+          <!-- Schedule & Details Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div class="p-3 bg-white border border-slate-200 rounded-lg">
+              <span class="text-slate-400 text-[10px] uppercase font-semibold">Earliest Full Date</span>
+              <div class="font-semibold text-slate-800 mt-0.5">${d.decision.earliest_date_for_full_payment || 'Never in 90 Days'}</div>
+            </div>
+            <div class="p-3 bg-white border border-slate-200 rounded-lg">
+              <span class="text-slate-400 text-[10px] uppercase font-semibold">Payment Plan</span>
+              <div class="font-mono text-[11px] text-slate-800 mt-0.5 truncate" title="${d.decision.payment_plan}">${d.decision.payment_plan}</div>
+            </div>
+            <div class="p-3 bg-white border border-slate-200 rounded-lg">
+              <span class="text-slate-400 text-[10px] uppercase font-semibold">Min Reserve</span>
+              <div class="font-semibold text-slate-800 mt-0.5">${curr} ${Number(d.profile.minimum_balance_to_keep).toLocaleString()}</div>
+            </div>
+            <div class="p-3 bg-white border border-slate-200 rounded-lg">
+              <span class="text-slate-400 text-[10px] uppercase font-semibold">Spending Changes</span>
+              <div class="font-semibold text-slate-800 mt-0.5 truncate" title="${d.decision.spending_changes_needed}">${d.decision.spending_changes_needed}</div>
+            </div>
+          </div>
+
+          <!-- 90-Day Forecast Chart -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">90-Day Daily Balance Trajectory</h3>
+              <span class="text-[11px] text-slate-400">Values in ${curr}</span>
+            </div>
+            <div class="h-64 bg-slate-50/50 rounded-xl p-3 border border-slate-100">
+              <canvas id="forecastChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Cashflow Events Preview -->
+          <div class="space-y-2">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Simulated Recurring Cashflows</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+              ${d.events.slice(0, 4).map(e => `
+                <div class="p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                  <div>
+                    <span class="font-medium text-slate-800">${e.name}</span>
+                    <span class="text-[10px] text-slate-400 block">${e.frequency} &bull; Day ${e.day_of_month || 'N/A'}</span>
+                  </div>
+                  <span class="font-semibold ${e.is_income ? 'text-emerald-600' : 'text-slate-600'}">
+                    ${e.is_income ? '+' : '-'}${curr} ${e.amount.toLocaleString()}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        renderForecastChart('forecastChart', d.forecast_chart, curr, isNotAffordable);
+      } catch (err) {
+        detailEl.innerHTML = `<div class="p-12 text-center text-rose-500 text-xs">Error loading details: ${err.message}</div>`;
+      }
+    }
+
+    function renderForecastChart(canvasId, chartData, currency, isNotAffordable) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if (currentChart) {
+        currentChart.destroy();
+      }
+
+      const datasets = [
+        {
+          label: 'Baseline Cashflow (No Purchase)',
+          data: chartData.baseline,
+          borderColor: '#94a3b8',
+          borderDash: [5, 5],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.1,
+        },
+        {
+          label: isNotAffordable ? 'Recommended: No Payment Made' : 'With Recommended Plan',
+          data: chartData.plan,
+          borderColor: isNotAffordable ? '#94a3b8' : '#4f46e5',
+          backgroundColor: isNotAffordable ? 'transparent' : 'rgba(79, 70, 229, 0.05)',
+          fill: !isNotAffordable,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+        },
+        {
+          label: `Safety Reserve Threshold (${currency} ${chartData.minimum_balance.toLocaleString()})`,
+          data: Array(chartData.dates.length).fill(chartData.minimum_balance),
+          borderColor: '#ef4444',
+          borderWidth: 1.5,
+          borderDash: [2, 2],
+          pointRadius: 0,
+          fill: false,
+        }
+      ];
+
+      // If not affordable, also plot hypothetical full payment to visualize the deficit!
+      if (isNotAffordable && chartData.hypothetical_full) {
+        datasets.push({
+          label: 'If Paid Full Today (Unsafe Outflow)',
+          data: chartData.hypothetical_full,
+          borderColor: '#f43f5e',
+          borderDash: [3, 3],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+        });
+      }
+
+      currentChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: chartData.dates, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${currency} ${Number(ctx.raw).toLocaleString()}`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 9 }, maxTicksLimit: 8 } },
+            y: {
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                font: { size: 9 },
+                callback: (val) => `${currency} ${val.toLocaleString()}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Playground Preset Handlers
+    function applyPreset(presetType) {
+      const amtInput = document.getElementById('cust_amount');
+      const textInput = document.getElementById('cust_text');
+      const userSelect = document.getElementById('cust_user_select');
+      const balanceInput = document.getElementById('cust_balance');
+      const salaryInput = document.getElementById('cust_salary');
+      const currSelect = document.getElementById('cust_currency');
+      const minKeepInput = document.getElementById('cust_min_keep');
+
+      // Set standard baseline user
+      userSelect.value = "custom_user";
+      document.getElementById('customFinancialInputs').classList.remove('hidden');
+      balanceInput.value = "2500";
+      salaryInput.value = "1800";
+      currSelect.value = "USD";
+      minKeepInput.value = "375";
+
+      if (presetType === 'small') {
+        amtInput.value = "150";
+        textInput.value = "Can I purchase this gadget for USD 150? Need it today.";
+      } else if (presetType === 'moderate') {
+        amtInput.value = "800";
+        textInput.value = "Looking to buy equipment for USD 800. Can I pay via installments?";
+      } else if (presetType === 'wait') {
+        amtInput.value = "2400";
+        textInput.value = "Planning a vacation for USD 2,400. Should I book now or wait?";
+      } else if (presetType === 'huge') {
+        amtInput.value = "15000";
+        textInput.value = "Can I afford this USD 15,000 car deposit on my current income?";
+      }
+
+      evaluateCustomRequest();
+    }
+
+    function onUserPresetChange() {
+      const userSelect = document.getElementById('cust_user_select');
+      const customInputs = document.getElementById('customFinancialInputs');
+      const amtInput = document.getElementById('cust_amount');
+
+      if (userSelect.value === 'custom_user') {
+        customInputs.classList.remove('hidden');
+      } else {
+        // Pre-fill corresponding numbers
+        customInputs.classList.add('hidden');
+        if (userSelect.value === 'user_27') {
+          amtInput.value = "6670";
+        } else if (userSelect.value === 'user_28') {
+          amtInput.value = "1302.40";
+        } else if (userSelect.value === 'user_30') {
+          amtInput.value = "775.20";
+        } else if (userSelect.value === 'user_26') {
+          amtInput.value = "15656000";
+        } else if (userSelect.value === 'user_33') {
+          amtInput.value = "118000";
+        }
+      }
+      evaluateCustomRequest();
+    }
+
+    async function evaluateCustomRequest(evt) {
+      if (evt) evt.preventDefault();
+      const resEl = document.getElementById('playgroundResult');
+      resEl.innerHTML = `<div class="p-12 text-center text-slate-400 text-xs">Simulating user profile and forecasting 90-day balance...</div>`;
+
+      const userSelectVal = document.getElementById('cust_user_select').value;
+      const isCustomUser = userSelectVal === 'custom_user';
+
+      const payload = {
+        user_id: isCustomUser ? "custom_user" : userSelectVal,
+        request_date: document.getElementById('cust_request_date').value,
+        desired_completion_date: document.getElementById('cust_completion_date').value,
+        request_type: document.getElementById('cust_type').value,
+        requested_amount: parseFloat(document.getElementById('cust_amount').value),
+        allows_partial_payment: document.getElementById('cust_partial').checked,
+        request_text: document.getElementById('cust_text').value,
+      };
+
+      if (isCustomUser) {
+        payload.available_balance = parseFloat(document.getElementById('cust_balance').value);
+        payload.monthly_salary = parseFloat(document.getElementById('cust_salary').value);
+        payload.home_currency = document.getElementById('cust_currency').value;
+        payload.minimum_balance_to_keep = parseFloat(document.getElementById('cust_min_keep').value);
+      }
+
+      try {
+        const res = await fetch('/api/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const d = await res.json();
+        const curr = d.profile.home_currency;
+        const isNotAffordable = d.decision.affordability_status === 'notaffordable';
+
+        resEl.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full badge-${d.decision.affordability_status}">
+                ${d.decision.affordability_status}
+              </span>
+              <h3 class="text-base font-bold text-slate-900 mt-1.5 capitalize">${d.decision.recommended_payment_method}</h3>
+            </div>
+            <div class="text-right">
+              <span class="text-xs text-slate-400">Safe Today</span>
+              <div class="text-lg font-bold ${isNotAffordable ? 'text-rose-600' : 'text-emerald-600'}">${curr} ${Number(d.decision.amount_safe_to_pay).toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl ${isNotAffordable ? 'bg-rose-50/80 border border-rose-200' : 'bg-slate-50 border border-slate-200'} text-xs ${isNotAffordable ? 'text-rose-800 font-medium' : 'text-slate-700'} leading-relaxed">
+            ${d.decision.decision_explanation}
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 text-xs">
+            <div class="p-3 bg-white border border-slate-200 rounded-lg">
+              <span class="text-slate-400 text-[10px] uppercase font-semibold">Payment Plan</span>
+              <div class="font-mono text-[11px] text-slate-800 mt-0.5 truncate">${d.decision.payment_plan}</div>
+            </div>
+            <div class="p-3 bg-white border border-slate-200 rounded-lg">
+              <span class="text-slate-400 text-[10px] uppercase font-semibold">Earliest Full Date</span>
+              <div class="font-semibold text-slate-800 mt-0.5">${d.decision.earliest_date_for_full_payment || 'Never in 90 Days'}</div>
+            </div>
+            <div class="p-3 bg-white border border-slate-200 rounded-lg">
+              <span class="text-slate-400 text-[10px] uppercase font-semibold">Spending Changes</span>
+              <div class="font-semibold text-slate-800 mt-0.5">${d.decision.spending_changes_needed}</div>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Projected 90-Day Balance</h4>
+              <span class="text-[11px] text-slate-400">Values in ${curr}</span>
+            </div>
+            <div class="h-64 bg-slate-50/50 rounded-xl p-3 border border-slate-100">
+              <canvas id="playgroundChartCanvas"></canvas>
+            </div>
+          </div>
+        `;
+
+        renderPlaygroundChart('playgroundChartCanvas', d.forecast_chart, curr, isNotAffordable);
+      } catch (err) {
+        resEl.innerHTML = `<div class="p-12 text-center text-rose-500 text-xs">Evaluation failed: ${err.message}</div>`;
+      }
+    }
+
+    function renderPlaygroundChart(canvasId, chartData, currency, isNotAffordable) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if (playgroundChart) {
+        playgroundChart.destroy();
+      }
+
+      const datasets = [
+        {
+          label: isNotAffordable ? 'No Payment Plan (Preserves Reserve)' : 'With Recommended Plan',
+          data: chartData.plan,
+          borderColor: isNotAffordable ? '#94a3b8' : '#4f46e5',
+          backgroundColor: isNotAffordable ? 'transparent' : 'rgba(79, 70, 229, 0.05)',
+          fill: !isNotAffordable,
+          borderWidth: 2,
+          pointRadius: 0,
+        },
+        {
+          label: `Safety Reserve Threshold (${currency} ${chartData.minimum_balance.toLocaleString()})`,
+          data: Array(chartData.dates.length).fill(chartData.minimum_balance),
+          borderColor: '#ef4444',
+          borderWidth: 1.5,
+          borderDash: [2, 2],
+          pointRadius: 0,
+          fill: false,
+        }
+      ];
+
+      if (isNotAffordable && chartData.hypothetical_full) {
+        datasets.push({
+          label: 'If Paid in Full Today (Severe Deficit)',
+          data: chartData.hypothetical_full,
+          borderColor: '#f43f5e',
+          borderDash: [3, 3],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+        });
+      }
+
+      playgroundChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: chartData.dates, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 9 }, maxTicksLimit: 8 } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 9 } } }
+          }
+        }
+      });
+    }
+
+    async function loadUsageReport() {
+      const el = document.getElementById('reportContent');
+      try {
+        const res = await fetch('/evaluation/usage_report.md');
+        const text = await res.text();
+        el.innerHTML = `<pre class="bg-slate-50 p-4 rounded-xl border border-slate-200 overflow-x-auto text-[11px] font-mono leading-relaxed">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+      } catch (err) {
+        el.innerHTML = `Failed to load usage report: ${err.message}`;
+      }
+    }
+
+    // ==========================================
+    // AI Chatbot Logic
+    // ==========================================
+    let isChatLoading = false;
+
+    function scrollChatToBottom() {
+      const container = document.getElementById('chatMessages');
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+
+    function clearChat() {
+      const container = document.getElementById('chatMessages');
+      if (container) {
+        container.innerHTML = `
+          <div class="flex items-start space-x-3 max-w-3xl">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm">
+              AI
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-xs leading-relaxed space-y-3">
+              <p class="font-semibold text-slate-800 text-sm">Conversation cleared. How else can I assist you?</p>
+              <p class="text-slate-600">You can ask about any request ID (e.g. <code>request_26</code>), compare what-if scenarios, or explore affordability rules.</p>
+            </div>
+          </div>
+        `;
+      }
+      updateQuickChips([
+        "Inspect Request 26",
+        "Show Not Affordable Cases",
+        "How is Safe to Pay calculated?",
+        "What if Request 26 was 5M IDR?"
+      ]);
+    }
+
+    function updateQuickChips(chips) {
+      const bar = document.getElementById('quickChipsBar');
+      if (!bar || !chips || chips.length === 0) return;
+      bar.innerHTML = '<span class="font-semibold text-slate-400 uppercase text-[10px] whitespace-nowrap">Suggested:</span>' +
+        chips.map(c => `
+          <button onclick="sendQuickChat('${c.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 whitespace-nowrap transition">
+            ${c}
+          </button>
+        `).join('');
+    }
+
+    function sendQuickChat(prompt) {
+      const input = document.getElementById('chatInput');
+      if (input) {
+        input.value = prompt;
+        document.getElementById('chatForm').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }
+    }
+
+    function askChatbotAboutRequest(reqId) {
+      switchTab('chat');
+      setTimeout(() => {
+        sendQuickChat(`Tell me about ${reqId}`);
+      }, 50);
+    }
+
+    async function handleChatSubmit(e) {
+      e.preventDefault();
+      if (isChatLoading) return;
+
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      appendUserMessage(text);
+      setChatLoading(true);
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+        setChatLoading(false);
+        appendBotMessage(data.reply, data.details, data.quick_suggestions);
+        if (data.quick_suggestions) {
+          updateQuickChips(data.quick_suggestions);
+        }
+      } catch (err) {
+        setChatLoading(false);
+        appendBotMessage(`⚠️ Unable to connect to advisory engine: ${err.message}`, null, null);
+      }
+    }
+
+    function appendUserMessage(text) {
+      const container = document.getElementById('chatMessages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'flex justify-end';
+      msgDiv.innerHTML = `
+        <div class="max-w-xl bg-indigo-600 text-white rounded-2xl rounded-tr-none px-4 py-2.5 text-xs shadow-sm leading-relaxed">
+          ${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+        </div>
+      `;
+      container.appendChild(msgDiv);
+      scrollChatToBottom();
+    }
+
+    function appendBotMessage(replyText, details, suggestions) {
+      const container = document.getElementById('chatMessages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'flex items-start space-x-3 max-w-3xl';
+
+      let cardHtml = '';
+      if (details) {
+        cardHtml = renderAdvisoryCard(details);
+      }
+
+      msgDiv.innerHTML = `
+        <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm mt-0.5">
+          AI
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none p-4 shadow-sm text-xs leading-relaxed space-y-2 flex-1">
+          <div class="prose prose-sm max-w-none text-slate-800">
+            ${formatMarkdown(replyText)}
+          </div>
+          ${cardHtml}
+        </div>
+      `;
+      container.appendChild(msgDiv);
+      scrollChatToBottom();
+    }
+
+    function setChatLoading(loading) {
+      isChatLoading = loading;
+      const btn = document.getElementById('chatSendBtn');
+      const container = document.getElementById('chatMessages');
+      if (loading) {
+        if (btn) btn.disabled = true;
+        const loader = document.createElement('div');
+        loader.id = 'chatLoadingIndicator';
+        loader.className = 'flex items-center space-x-3 max-w-3xl';
+        loader.innerHTML = `
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm">
+            AI
+          </div>
+          <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm text-xs text-slate-500 flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+            <span class="font-medium text-slate-600">Simulating 90-day cashflows & calculating plan...</span>
+          </div>
+        `;
+        container.appendChild(loader);
+        scrollChatToBottom();
+      } else {
+        if (btn) btn.disabled = false;
+        const loader = document.getElementById('chatLoadingIndicator');
+        if (loader) loader.remove();
+      }
+    }
+
+    function formatMarkdown(text) {
+      if (!text) return '';
+      let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Format markdown tables
+      html = html.replace(/((?:\|[^\n]+\|\r?\n)+)/g, (match) => {
+        const lines = match.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) return match;
+        let tableHtml = '<div class="overflow-x-auto my-3"><table class="min-w-full divide-y divide-slate-200 text-xs border border-slate-200 rounded-lg overflow-hidden shadow-xs">';
+        lines.forEach((line, idx) => {
+          if (line.includes('---')) return;
+          const cells = line.split('|').map(c => c.trim()).filter((c, i, a) => i > 0 && i < a.length - 1);
+          if (idx === 0) {
+            tableHtml += '<thead class="bg-slate-100 font-semibold text-slate-800"><tr>' + cells.map(c => `<th class="px-3 py-2 text-left">${c}</th>`).join('') + '</tr></thead><tbody class="divide-y divide-slate-100 bg-white">';
+          } else {
+            tableHtml += '<tr class="hover:bg-slate-50">' + cells.map(c => `<td class="px-3 py-2 font-mono text-[11px]">${c}</td>`).join('') + '</tr>';
+          }
+        });
+        tableHtml += '</tbody></table></div>';
+        return tableHtml;
+      });
+
+      // Headers
+      html = html.replace(/^#### (.*?)$/gm, '<h4 class="font-bold text-xs text-slate-800 uppercase tracking-wider mt-3 mb-1">$1</h4>');
+      html = html.replace(/^### (.*?)$/gm, '<h3 class="font-bold text-sm text-slate-900 mt-3 mb-1.5">$1</h3>');
+      html = html.replace(/^## (.*?)$/gm, '<h2 class="font-bold text-base text-slate-900 mt-4 mb-2">$1</h2>');
+
+      // Bold & Italic
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>');
+      html = html.replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>');
+
+      // Inline Code
+      html = html.replace(/`([^`]+)`/g, '<code class="bg-slate-100 text-indigo-700 font-mono px-1 py-0.5 rounded text-[11px] border border-slate-200">$1</code>');
+
+      // Bullet Lists
+      html = html.replace(/^(?:-|\*)\s+(.*?)$/gm, '<div class="flex items-start space-x-2 my-1"><span class="text-indigo-500 font-bold">•</span><span class="flex-1">$1</span></div>');
+
+      // Horizontal rules
+      html = html.replace(/^----\s*$/gm, '<hr class="my-3 border-slate-200" />');
+
+      // Paragraph spacing
+      html = html.replace(/\n\n/g, '<div class="h-2"></div>');
+
+      return html;
+    }
+
+    function renderAdvisoryCard(d) {
+      if (!d || !d.request_id) return '';
+      const statusColors = {
+        'affordablenow': 'bg-emerald-50 border-emerald-200 text-emerald-800',
+        'affordablewithplan': 'bg-blue-50 border-blue-200 text-blue-800',
+        'affordablelater': 'bg-amber-50 border-amber-200 text-amber-800',
+        'notaffordable': 'bg-rose-50 border-rose-200 text-rose-800',
+      };
+      const badgeClass = statusColors[d.affordability_status] || 'bg-slate-100 text-slate-800';
+
+      return `
+        <div class="mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-slate-900">${d.request_id}</span>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badgeClass}">${d.affordability_status}</span>
+            </div>
+            <span class="text-[11px] font-bold text-indigo-700">${d.currency} ${Number(d.requested_amount).toLocaleString()}</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+            <div class="bg-white p-2 rounded border border-slate-200">
+              <span class="text-slate-400 block text-[9px] uppercase font-bold">Safe Today</span>
+              <span class="font-semibold text-slate-800">${d.currency} ${Number(d.amount_safe_to_pay).toLocaleString()}</span>
+            </div>
+            <div class="bg-white p-2 rounded border border-slate-200">
+              <span class="text-slate-400 block text-[9px] uppercase font-bold">Method</span>
+              <span class="font-semibold text-slate-800 capitalize">${d.recommended_payment_method}</span>
+            </div>
+            <div class="bg-white p-2 rounded border border-slate-200 col-span-2 sm:col-span-1">
+              <span class="text-slate-400 block text-[9px] uppercase font-bold">Earliest Pay Date</span>
+              <span class="font-semibold text-slate-800">${d.earliest_date_for_full_payment || 'N/A'}</span>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2 pt-1">
+            <button onclick="goToExplorer('${d.request_id}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-indigo-600 border border-indigo-200 rounded-lg text-[10px] font-semibold transition flex items-center space-x-1">
+              <span>🔍</span><span>View 90-Day Chart</span>
+            </button>
+            <button onclick="goToPlayground('${d.user_id}', ${d.requested_amount}, '${d.currency}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-semibold transition flex items-center space-x-1">
+              <span>🔮</span><span>Open in What-If</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function goToExplorer(reqId) {
+      switchTab('explorer');
+      loadDetail(reqId);
+    }
+
+    function goToPlayground(userId, amount, currency) {
+      switchTab('playground');
+      const userSelect = document.getElementById('cust_user_id');
+      if (userSelect) {
+        userSelect.value = userId;
+        userSelect.dispatchEvent(new Event('change'));
+      }
+      const amtInput = document.getElementById('cust_amount');
+      if (amtInput) {
+        amtInput.value = amount;
+      }
+    }
+
+    // Initialize on page load
+    loadSummary();
+    loadRequests();
+  </script>
+
+  <!-- Floating Chat Assistant Button -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <button onclick="switchTab('chat')" class="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-indigo-300 transition transform hover:-translate-y-0.5 border border-indigo-400/30">
+      <span class="text-sm">💬</span>
+      <span class="text-xs font-bold tracking-wide">Ask AI Agent</span>
+    </button>
+  </div>
+</body>
+</html>
