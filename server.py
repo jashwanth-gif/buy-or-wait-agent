@@ -32,7 +32,8 @@ from src.chat_bot import FinancialChatBot
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("agent_server")
 
-UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UI_DIR = os.path.join(BASE_DIR, "ui")
 
 # Global cache
 DATA_LOADER: Optional[DataLoader] = None
@@ -49,7 +50,7 @@ def initialize_cache():
     global DATA_LOADER, FORECAST_ENGINE, PLAN_GENERATOR, ALL_REQUESTS, OUTPUT_RECORDS, OUTPUT_DF, REQUESTS_DF, CHAT_BOT
     
     # 1. Initialize official data loader
-    dataset_dir = "dataset" if os.path.exists("dataset") else "."
+    dataset_dir = os.path.join(BASE_DIR, "dataset") if os.path.exists(os.path.join(BASE_DIR, "dataset")) else BASE_DIR
     DATA_LOADER = DataLoader(dataset_dir)
     FORECAST_ENGINE = FinancialForecastEngine(DATA_LOADER)
     PLAN_GENERATOR = PlanGenerator(DATA_LOADER, FORECAST_ENGINE)
@@ -60,11 +61,16 @@ def initialize_cache():
     ALL_REQUESTS = {r.request_id: r for r in req_list}
 
     # 3. Load requests DataFrame
-    raw_req_path = os.path.join(dataset_dir, "requests.csv") if os.path.exists(os.path.join(dataset_dir, "requests.csv")) else "records.csv"
+    raw_req_path = os.path.join(dataset_dir, "requests.csv") if os.path.exists(os.path.join(dataset_dir, "requests.csv")) else os.path.join(BASE_DIR, "records.csv")
     REQUESTS_DF = pd.read_csv(raw_req_path, keep_default_na=False).fillna("")
 
     # 4. Load output.csv
-    out_path = "output.csv" if os.path.exists("output.csv") else ("evaluation/output.csv" if os.path.exists("evaluation/output.csv") else os.path.join(dataset_dir, "output.csv"))
+    candidate_outputs = [
+        os.path.join(BASE_DIR, "output.csv"),
+        os.path.join(BASE_DIR, "evaluation", "output.csv"),
+        os.path.join(dataset_dir, "output.csv"),
+    ]
+    out_path = next((p for p in candidate_outputs if os.path.exists(p)), os.path.join(BASE_DIR, "output.csv"))
     if os.path.exists(out_path):
         OUTPUT_DF = pd.read_csv(out_path, keep_default_na=False).fillna("")
         for _, row in OUTPUT_DF.iterrows():
@@ -83,7 +89,8 @@ initialize_cache()
 
 class AgentHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=UI_DIR, **kwargs)
+        directory = kwargs.pop("directory", UI_DIR)
+        super().__init__(*args, directory=directory, **kwargs)
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -91,13 +98,46 @@ class AgentHandler(SimpleHTTPRequestHandler):
         self.send_header("Expires", "0")
         super().end_headers()
 
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests."""
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
 
-        if path == "/":
-            self.path = "/index.html"
+        if path in ("/", "/index.html"):
+            index_path = os.path.join(UI_DIR, "index.html")
+            if os.path.exists(index_path):
+                with open(index_path, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(content)
+                return
             return super().do_GET()
+
+        elif path == "/evaluation/usage_report.md":
+            report_path = os.path.join(BASE_DIR, "evaluation", "usage_report.md")
+            if os.path.exists(report_path):
+                with open(report_path, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/markdown; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(content)
+                return
+            self.send_error(404, "Usage report not found")
+            return
 
         elif path == "/api/summary":
             self.handle_api_summary()
@@ -566,6 +606,12 @@ def start_server(port: int = 8000):
         httpd.server_close()
 
 
+# Top-level serverless and WSGI exports for Vercel, AWS Lambda, etc.
+handler = AgentHandler
+app = AgentHandler
+application = AgentHandler
+
+
 if __name__ == "__main__":
     port_num = 8000
     if len(sys.argv) > 1:
@@ -574,3 +620,4 @@ if __name__ == "__main__":
         except ValueError:
             pass
     start_server(port_num)
+

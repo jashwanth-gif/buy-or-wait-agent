@@ -246,5 +246,15 @@ def main():
     )
 
 
+# Serverless handler fallback in case platform inspects main.py
+try:
+    from server import AgentHandler as handler, AgentHandler as app, AgentHandler as application
+except Exception:
+    handler = None
+    app = None
+    application = None
+
+
 if __name__ == "__main__":
     main()
+
